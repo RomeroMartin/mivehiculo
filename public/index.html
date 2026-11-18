@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi Vehículo — página de prueba</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    button { font-size: 1rem; padding: .6rem 1rem; margin: .25rem .25rem .25rem 0; }
+    p { margin: .5rem 0; }
+    #estado { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Mi Vehículo</h1>
+  <p>Página de prueba de la fase 0. Se reemplaza en la fase 1.</p>
+  <p>Firebase: <span id="estado">cargando…</span></p>
+  <p>Proyecto: <span id="proyecto"></span></p>
+  <p>Usuario: <span id="usuario">sin sesión</span></p>
+  <button id="entrar" type="button">Probar login con Google</button>
+  <button id="salir" type="button" hidden>Cerrar sesión</button>
+  <p id="error" role="alert"></p>
+
+  <script type="module">
+    // Todo el texto se muestra con textContent (regla 2 de CLAUDE.md).
+    // El import del SDK repite la versión de js/firebase.js (los imports estáticos no admiten variables).
+    import { app } from "./js/firebase.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+    const $ = (id) => document.getElementById(id);
+    $("estado").textContent = "inicializado correctamente";
+    $("proyecto").textContent = app.options.projectId;
+
+    const auth = getAuth(app);
+    onAuthStateChanged(auth, (user) => {
+      $("usuario").textContent = user ? (user.email + (user.emailVerified ? " (verificado)" : " (sin verificar)")) : "sin sesión";
+      $("entrar").hidden = !!user;
+      $("salir").hidden = !user;
+    });
+    $("entrar").addEventListener("click", async () => {
+      $("error").textContent = "";
+      try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+      catch (e) { $("error").textContent = "Error: " + e.code; }
+    });
+    $("salir").addEventListener("click", () => signOut(auth));
+  </script>
+</body>
+</html>
