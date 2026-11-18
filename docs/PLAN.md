@@ -583,7 +583,7 @@ El riesgo más grande no es técnico: es que el usuario deje de cargar km y los 
 - [x] Nombre de la app: **Mi Vehículo**.
 - [x] Dominio: por ahora ninguno, se usa `https://<proyecto>.web.app`.
 - [x] Deploy: automático con GitHub Actions al hacer merge a `main`.
-- [ ] ID del proyecto de Firebase (define la dirección `.web.app`; no se puede cambiar).
+- [x] ID del proyecto de Firebase: `mi-vehiculo-mantenimiento` (dirección `https://mi-vehiculo-mantenimiento.web.app`).
 - [ ] Cuándo comprar un dominio (obligatorio antes de que otras personas reciban mails).
 
 **Si se vende, falta sumar**
