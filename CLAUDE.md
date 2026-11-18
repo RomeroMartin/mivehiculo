@@ -19,7 +19,8 @@ App web de mantenimiento vehicular: 100% frontend (HTML, CSS y JS vanilla, sin f
 
 - Tests de cálculos: `node --test tests/`
 - Emuladores: `firebase emulators:start`
-- Deploy (manual): `firebase deploy`
+- Deploy: automático al mergear a `main` (`.github/workflows/deploy.yml`). A mano, solo si hace falta: `firebase deploy`
+- Nombre de la app: **Mi Vehículo**. Sin dominio propio por ahora: se usa `https://<proyecto>.web.app`.
 - Job en prueba: `DRY_RUN=true ONLY_UID=<uid> node job/alertas.js`
 
 ## Idioma
