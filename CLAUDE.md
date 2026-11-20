@@ -2,7 +2,7 @@
 
 App web de mantenimiento vehicular: 100% frontend (HTML, CSS y JS vanilla, sin framework ni build) + Firebase (Auth, Firestore, Hosting, plan Spark) + un job diario en GitHub Actions que manda mails con Resend.
 
-**El plan completo está en `docs/PLAN.md`. Leelo antes de empezar cualquier fase y trabajá una fase por sesión.** Si algo del código contradice el plan, avisá antes de decidir.
+**Al empezar cada sesión leé `docs/PROGRESO.md` (estado actual, pendientes y notas) y `docs/PLAN.md` (el plan completo). Trabajá una fase por sesión y, al cerrarla, actualizá `docs/PROGRESO.md`.** Si algo del código contradice el plan, avisá antes de decidir.
 
 ## Reglas que no se negocian
 
