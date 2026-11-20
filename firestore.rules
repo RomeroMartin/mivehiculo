@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true;
+    }
+
+    match /usuarios/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() <= 100;
+
+      // log de mails: solo lo escribe el job
+      match /avisos/{id} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /vehiculos/{vid} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.patente is string
+          && request.resource.data.patente.size() <= 12;
+
+        match /lecturasKm/{id}   { allow read, write: if isOwner(uid); }
+        match /services/{id} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid)
+            && request.resource.data.piezas.size() <= 50;
+        }
+        match /planes/{id}       { allow read, write: if isOwner(uid); }
+        match /vencimientos/{id} { allow read, write: if isOwner(uid); }
+      }
+    }
+
+    match /informes/{token} {
+      allow get: if resource.data.activo == true;
+      allow list: if false;
+      allow create: if isOwner(request.resource.data.uid);
+      allow update, delete: if isOwner(resource.data.uid);
+    }
+  }
+}

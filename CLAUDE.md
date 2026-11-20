@@ -17,8 +17,10 @@ App web de mantenimiento vehicular: 100% frontend (HTML, CSS y JS vanilla, sin f
 
 ## Comandos (se completan a medida que existan)
 
-- Tests de cálculos: `node --test tests/`
-- Emuladores: `firebase emulators:start`
+- Instalar herramientas (una vez): `npm install`
+- Tests de cálculos (desde la fase 2): `node --test tests/calculos.test.js`
+- Tests de reglas (necesitan Java): `npm run test:reglas`
+- Emuladores a mano: `npm run emuladores` (UI en http://localhost:4000)
 - Deploy: **manual**, desde `main` actualizado y con los tests en verde: `npx firebase-tools@15.36.0 deploy --only hosting --project mi-vehiculo-mantenimiento` (sumar `firestore:rules,firestore:indexes` si cambiaron). No hay workflow de deploy. Detalle en `docs/PLAN.md`, sección Deploy.
 - Nombre de la app: **Mi Vehículo**. Sin dominio propio por ahora: se usa `https://<proyecto>.web.app`.
 - Job en prueba: `DRY_RUN=true ONLY_UID=<uid> node job/alertas.js`

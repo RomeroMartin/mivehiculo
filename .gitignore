@@ -1,0 +1,13 @@
+node_modules/
+.firebase/
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Nunca al repo: cuentas de servicio y secretos
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+.env
+.env.*

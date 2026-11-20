@@ -1,0 +1,16 @@
+{
+  "name": "mi-vehiculo",
+  "private": true,
+  "type": "module",
+  "description": "Mi Vehículo: herramientas de desarrollo (el sitio no tiene paso de compilación).",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "emuladores": "firebase emulators:start --project demo-mi-vehiculo",
+    "test:reglas": "firebase emulators:exec --only firestore --project demo-mi-vehiculo \"node --test tests/reglas.test.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.0",
+    "firebase": "12.19.0",
+    "firebase-tools": "15.36.0"
+  }
+}
