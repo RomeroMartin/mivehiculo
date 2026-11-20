@@ -533,6 +533,7 @@ Son nueve fases en orden, y cada una termina con algo que se puede probar. Con C
    - Listo cuando: una página de prueba escribe y lee un documento en el emulador, `firebase deploy` la publica en `https://<proyecto>.web.app`, y el login con Google funciona ahí desde Safari iPhone y Chrome Android.
 1. **Fase 1 — Cuentas y seguridad.** Login con Google y email, verificación de mail, recuperar contraseña, guardia de páginas privadas, creación de `usuarios/{uid}` en el primer ingreso (con el mail ya verificado), reglas publicadas, cabeceras CSP, `ui.js`.
    - Listo cuando: un test en el emulador confirma que el usuario A no puede leer ni escribir nada del usuario B, que un usuario sin mail verificado no puede escribir, que no se puede guardar un `email` distinto al de la cuenta, y que un informe inactivo no se lee.
+   - **Estado:** implementada y probada en emuladores (26 tests de reglas y recorrido completo de registro, verificación, login y recuperar contraseña). Pendiente: publicar las reglas y probar Google con la CSP en producción.
 2. **Fase 2 — Vehículos y kilometraje.** Alta, edición y archivo de vehículos. Lecturas de km con validación por fecha. `shared/fechas.js` y `shared/calculos.js` con `recalcularKmVehiculo` y `kmEstimado`. Borrado reanudable de vehículos.
    - Listo cuando: `node --test` pasa casos de 0 lecturas, 1 lectura, lecturas en menos de 14 días, carga de lecturas viejas entre otras dos, corrección de tablero y salto de más de 1.000 km por día. Borrar un vehículo cerrando la pestaña a la mitad y reabriéndola termina el borrado.
 3. **Fase 3 — Historial de services.** Alta y edición con lista de piezas dinámica, total automático, lectura de km automática (solo si encaja), filtros. Carga de historial viejo.
@@ -604,5 +605,8 @@ El riesgo más grande no es técnico: es que el usuario deje de cargar km y los 
 | Fases reordenadas (alertas antes, 9 en total) | Da valor real antes y valida pronto el dominio y el job |
 | Nombre "Mi Vehículo", sin dominio propio por ahora | Menos costo y menos pasos; los mails solo salen a tu cuenta hasta tener dominio |
 | Deploy manual (se descarta la publicación automática) | Menos piezas y sin cuentas de servicio extra; se retoma si molesta |
+| CSP con `style-src 'unsafe-inline'` | El login con Google carga componentes de Google que pueden necesitar estilos en línea; los scripts siguen restringidos a la propia app, gstatic y apis.google.com |
+| Los mails de verificación y de recuperar contraseña los manda Firebase, no Resend | Vienen de `noreply@<proyecto>.firebaseapp.com`; pueden caer en spam. La plantilla (y el idioma) se edita en Authentication → Plantillas |
+| En localhost la app usa solo los emuladores | Nadie toca la base real por error al desarrollar |
 | Se quita `zonaHoraria`, se separan los avisos, se suma DMARC, caché offline, versiones fijadas, tests de reglas con librería y Java | Detalles técnicos menores |
 | Plan en `docs/PLAN.md` + `CLAUDE.md` corto | Menos contexto gastado en cada sesión de Claude Code |

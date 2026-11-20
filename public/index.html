@@ -3,48 +3,78 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mi Vehículo — página de prueba</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
-    button { font-size: 1rem; padding: .6rem 1rem; margin: .25rem .25rem .25rem 0; }
-    p { margin: .5rem 0; }
-    #estado { font-weight: bold; }
-  </style>
+  <title>Mi Vehículo — Ingresar</title>
+  <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-  <h1>Mi Vehículo</h1>
-  <p>Página de prueba de la fase 0. Se reemplaza en la fase 1.</p>
-  <p>Firebase: <span id="estado">cargando…</span></p>
-  <p>Proyecto: <span id="proyecto"></span></p>
-  <p>Usuario: <span id="usuario">sin sesión</span></p>
-  <button id="entrar" type="button">Probar login con Google</button>
-  <button id="salir" type="button" hidden>Cerrar sesión</button>
-  <p id="error" role="alert"></p>
+  <main>
+    <h1>Mi Vehículo</h1>
+    <p class="sub">El historial de mantenimiento de tu auto, con avisos de vencimientos.</p>
 
-  <script type="module">
-    // Todo el texto se muestra con textContent (regla 2 de CLAUDE.md).
-    // El import del SDK repite la versión de js/firebase.js (los imports estáticos no admiten variables).
-    import { app } from "./js/firebase.js";
-    import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+    <noscript><p class="error">Esta app necesita JavaScript para funcionar.</p></noscript>
 
-    const $ = (id) => document.getElementById(id);
-    $("estado").textContent = "inicializado correctamente";
-    $("proyecto").textContent = app.options.projectId;
+    <p id="cargando">Cargando…</p>
 
-    const auth = getAuth(app);
-    onAuthStateChanged(auth, (user) => {
-      $("usuario").textContent = user ? (user.email + (user.emailVerified ? " (verificado)" : " (sin verificar)")) : "sin sesión";
-      $("entrar").hidden = !!user;
-      $("salir").hidden = !user;
-    });
-    $("entrar").addEventListener("click", async () => {
-      $("error").textContent = "";
-      try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-      catch (e) { $("error").textContent = "Error: " + e.code; }
-    });
-    $("salir").addEventListener("click", () => signOut(auth));
-  </script>
+    <!-- Iniciar sesión -->
+    <section id="vista-entrar" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-entrar" novalidate>
+        <label for="entrar-email">Mail</label>
+        <input id="entrar-email" type="email" autocomplete="email" required>
+        <label for="entrar-clave">Contraseña</label>
+        <input id="entrar-clave" type="password" autocomplete="current-password" required>
+        <button class="principal ancho" type="submit">Entrar</button>
+      </form>
+      <p><button id="ir-olvide" class="enlace" type="button">Olvidé mi contraseña</button></p>
+      <p class="separador">o</p>
+      <button id="btn-google-entrar" class="ancho" type="button">Continuar con Google</button>
+      <p class="separador">¿No tenés cuenta? <button id="ir-registro" class="enlace" type="button">Crear cuenta</button></p>
+    </section>
+
+    <!-- Crear cuenta -->
+    <section id="vista-registro" hidden>
+      <h2>Crear cuenta</h2>
+      <form id="form-registro" novalidate>
+        <label for="reg-nombre">Nombre</label>
+        <input id="reg-nombre" type="text" autocomplete="name" maxlength="100" required>
+        <label for="reg-email">Mail</label>
+        <input id="reg-email" type="email" autocomplete="email" required>
+        <label for="reg-clave">Contraseña (mínimo 8 caracteres)</label>
+        <input id="reg-clave" type="password" autocomplete="new-password" minlength="8" required>
+        <button class="principal ancho" type="submit">Crear cuenta</button>
+      </form>
+      <p class="separador">o</p>
+      <button id="btn-google-registro" class="ancho" type="button">Continuar con Google</button>
+      <p class="separador">¿Ya tenés cuenta? <button id="ir-entrar" class="enlace" type="button">Iniciar sesión</button></p>
+    </section>
+
+    <!-- Recuperar contraseña -->
+    <section id="vista-olvide" hidden>
+      <h2>Recuperar contraseña</h2>
+      <p>Escribí tu mail y te mandamos un link para elegir una contraseña nueva.</p>
+      <form id="form-olvide" novalidate>
+        <label for="olvide-email">Mail</label>
+        <input id="olvide-email" type="email" autocomplete="email" required>
+        <button class="principal ancho" type="submit">Mandar link</button>
+      </form>
+      <p class="separador"><button id="ir-entrar-2" class="enlace" type="button">Volver</button></p>
+    </section>
+
+    <!-- Falta verificar el mail -->
+    <section id="vista-verificar" hidden>
+      <h2>Verificá tu mail</h2>
+      <p>Te mandamos un mail a <strong id="verificar-email"></strong>. Tocá el link que trae y volvé acá.</p>
+      <p class="sub">Si no lo ves, revisá la carpeta de spam.</p>
+      <div class="fila">
+        <button id="btn-ya-verifique" class="principal" type="button">Ya lo verifiqué</button>
+        <button id="btn-reenviar" type="button">Reenviar mail</button>
+      </div>
+      <p class="separador"><button id="btn-salir-verificar" class="enlace" type="button">Salir</button></p>
+    </section>
+
+    <p id="mensaje" class="mensaje" role="status" hidden></p>
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script type="module" src="js/paginas/index.js"></script>
 </body>
 </html>

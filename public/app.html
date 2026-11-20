@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi Vehículo</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main>
+    <h1>Mi Vehículo</h1>
+    <noscript><p class="error">Esta app necesita JavaScript para funcionar.</p></noscript>
+    <p id="cargando">Cargando…</p>
+    <section id="contenido" hidden>
+      <p class="sub">Hola, <strong id="nombre"></strong>.</p>
+      <p>Tu cuenta está lista. El tablero con tus vehículos llega en la próxima fase.</p>
+      <button id="btn-salir" type="button">Cerrar sesión</button>
+    </section>
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script type="module" src="js/paginas/app.js"></script>
+</body>
+</html>

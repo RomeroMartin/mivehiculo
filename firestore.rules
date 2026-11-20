@@ -2,20 +2,154 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
+    // ---------- Acceso ----------
+
+    // Solo el dueño, y solo con el mail verificado (los usuarios de Google ya lo tienen).
     function isOwner(uid) {
       return request.auth != null
         && request.auth.uid == uid
         && request.auth.token.email_verified == true;
     }
 
+    // ---------- Validadores ----------
+
+    function texto(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+    function textoOpc(d, k, max) {
+      return !(k in d) || texto(d[k], 0, max);
+    }
+    // Fechas de calendario: texto "AAAA-MM-DD" (nunca timestamp).
+    function fechaTxt(v) {
+      return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+    function numeroNoNeg(v) {
+      return v is number && v >= 0 && v <= 100000000;
+    }
+    function numeroONulo(v) {
+      return v == null || numeroNoNeg(v);
+    }
+
+    // ---------- Esquemas ----------
+
+    function usuarioValido(d) {
+      return d.keys().hasOnly(['nombre', 'email', 'avisosResumen', 'pedirKmMensual',
+                               'ultimoPedidoKm', 'borrando', 'creado', 'actualizado'])
+        && d.keys().hasAll(['nombre', 'email', 'avisosResumen', 'pedirKmMensual',
+                            'borrando', 'creado', 'actualizado'])
+        && texto(d.nombre, 1, 100)
+        && d.email == request.auth.token.email
+        && d.avisosResumen is bool
+        && d.pedirKmMensual is bool
+        && d.borrando is bool
+        && (!('ultimoPedidoKm' in d) || d.ultimoPedidoKm == null || fechaTxt(d.ultimoPedidoKm))
+        && d.creado is timestamp
+        && d.actualizado is timestamp;
+    }
+
+    function vehiculoValido(d) {
+      return d.keys().hasOnly(['patente', 'marca', 'modelo', 'version', 'color', 'anio',
+                               'combustible', 'fechaCompra', 'kmCompra', 'kmActual',
+                               'fechaKmActual', 'kmDiario', 'activo', 'borrando',
+                               'informeToken', 'creado', 'actualizado'])
+        && d.keys().hasAll(['patente', 'marca', 'modelo', 'anio', 'combustible',
+                            'kmActual', 'fechaKmActual', 'activo', 'creado', 'actualizado'])
+        && texto(d.patente, 1, 12)
+        && texto(d.marca, 1, 40)
+        && texto(d.modelo, 1, 60)
+        && textoOpc(d, 'version', 60)
+        && textoOpc(d, 'color', 30)
+        && d.anio is int && d.anio >= 1900 && d.anio <= 2100
+        && d.combustible in ['nafta', 'diesel', 'gnc', 'electrico', 'hibrido']
+        && (!('fechaCompra' in d) || d.fechaCompra == null || fechaTxt(d.fechaCompra))
+        && (!('kmCompra' in d) || numeroONulo(d.kmCompra))
+        && numeroNoNeg(d.kmActual)
+        && fechaTxt(d.fechaKmActual)
+        && (!('kmDiario' in d) || numeroONulo(d.kmDiario))
+        && d.activo is bool
+        && (!('borrando' in d) || d.borrando is bool)
+        && (!('informeToken' in d) || d.informeToken == null || texto(d.informeToken, 1, 64))
+        && d.creado is timestamp
+        && d.actualizado is timestamp;
+    }
+
+    function lecturaValida(d) {
+      return d.keys().hasOnly(['fecha', 'km', 'origen', 'creado'])
+        && d.keys().hasAll(['fecha', 'km', 'origen', 'creado'])
+        && fechaTxt(d.fecha)
+        && numeroNoNeg(d.km)
+        && d.origen in ['manual', 'service', 'alta']
+        && d.creado is timestamp;
+    }
+
+    function serviceValido(d) {
+      return d.keys().hasOnly(['fecha', 'km', 'tipo', 'taller', 'mecanico', 'descripcion',
+                               'piezas', 'manoObra', 'total', 'planesCumplidos',
+                               'lecturaId', 'creado', 'actualizado'])
+        && d.keys().hasAll(['fecha', 'km', 'tipo', 'piezas', 'manoObra', 'total',
+                            'planesCumplidos', 'creado', 'actualizado'])
+        && fechaTxt(d.fecha)
+        && numeroNoNeg(d.km)
+        && texto(d.tipo, 1, 40)
+        && textoOpc(d, 'taller', 100)
+        && textoOpc(d, 'mecanico', 100)
+        && textoOpc(d, 'descripcion', 2000)
+        && d.piezas is list && d.piezas.size() <= 50
+        && numeroNoNeg(d.manoObra)
+        && numeroNoNeg(d.total)
+        && d.planesCumplidos is list && d.planesCumplidos.size() <= 30
+        && (!('lecturaId' in d) || d.lecturaId == null || texto(d.lecturaId, 1, 40))
+        && d.creado is timestamp
+        && d.actualizado is timestamp;
+    }
+
+    function planValido(d) {
+      return d.keys().hasOnly(['nombre', 'cadaKm', 'cadaMeses', 'ultimoKm', 'ultimaFecha',
+                               'avisoKmAntes', 'avisoDiasAntes', 'activo', 'ultimoAviso'])
+        && d.keys().hasAll(['nombre', 'cadaKm', 'cadaMeses', 'ultimoKm', 'ultimaFecha',
+                            'avisoKmAntes', 'avisoDiasAntes', 'activo', 'ultimoAviso'])
+        && texto(d.nombre, 1, 80)
+        && numeroONulo(d.cadaKm)
+        && numeroONulo(d.cadaMeses)
+        && (d.cadaKm != null || d.cadaMeses != null)
+        && numeroONulo(d.ultimoKm)
+        && (d.ultimaFecha == null || fechaTxt(d.ultimaFecha))
+        && numeroNoNeg(d.avisoKmAntes)
+        && numeroNoNeg(d.avisoDiasAntes)
+        && d.activo is bool
+        && (d.ultimoAviso == null || texto(d.ultimoAviso, 1, 100));
+    }
+
+    function vencimientoValido(d) {
+      return d.keys().hasOnly(['tipo', 'descripcion', 'fechaVence', 'diasAviso',
+                               'activo', 'avisosEnviados'])
+        && d.keys().hasAll(['tipo', 'descripcion', 'fechaVence', 'diasAviso',
+                            'activo', 'avisosEnviados'])
+        && d.tipo in ['vtv', 'matafuegos', 'seguro', 'patente', 'carnet', 'gnc', 'otro']
+        && texto(d.descripcion, 0, 200)
+        && fechaTxt(d.fechaVence)
+        && d.diasAviso is list && d.diasAviso.size() <= 10
+        && d.activo is bool
+        && d.avisosEnviados is list && d.avisosEnviados.size() <= 200;
+    }
+
+    function informeValido(d) {
+      return d.keys().hasOnly(['uid', 'vehiculoId', 'activo', 'actualizado', 'datos'])
+        && d.keys().hasAll(['uid', 'vehiculoId', 'activo', 'actualizado', 'datos'])
+        && texto(d.uid, 1, 128)
+        && texto(d.vehiculoId, 1, 40)
+        && d.activo is bool
+        && d.actualizado is timestamp
+        && d.datos is map;
+    }
+
+    // ---------- Colecciones ----------
+
     match /usuarios/{uid} {
       allow read, delete: if isOwner(uid);
-      allow create, update: if isOwner(uid)
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.nombre is string
-        && request.resource.data.nombre.size() <= 100;
+      allow create, update: if isOwner(uid) && usuarioValido(request.resource.data);
 
-      // log de mails: solo lo escribe el job
+      // Log de mails: solo lo escribe el job (Admin SDK, que no pasa por estas reglas).
       match /avisos/{id} {
         allow read: if isOwner(uid);
         allow write: if false;
@@ -23,26 +157,40 @@ service cloud.firestore {
 
       match /vehiculos/{vid} {
         allow read, delete: if isOwner(uid);
-        allow create, update: if isOwner(uid)
-          && request.resource.data.patente is string
-          && request.resource.data.patente.size() <= 12;
+        allow create, update: if isOwner(uid) && vehiculoValido(request.resource.data);
 
-        match /lecturasKm/{id}   { allow read, write: if isOwner(uid); }
+        // Subcolecciones una por una (nunca con comodín: anularía las validaciones).
+        match /lecturasKm/{id} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid) && lecturaValida(request.resource.data);
+        }
         match /services/{id} {
           allow read, delete: if isOwner(uid);
-          allow create, update: if isOwner(uid)
-            && request.resource.data.piezas.size() <= 50;
+          allow create, update: if isOwner(uid) && serviceValido(request.resource.data);
         }
-        match /planes/{id}       { allow read, write: if isOwner(uid); }
-        match /vencimientos/{id} { allow read, write: if isOwner(uid); }
+        match /planes/{id} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid) && planValido(request.resource.data);
+        }
+        match /vencimientos/{id} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid) && vencimientoValido(request.resource.data);
+        }
       }
     }
 
+    // Informes públicos: se leen por token (get), nunca se listan.
     match /informes/{token} {
       allow get: if resource.data.activo == true;
       allow list: if false;
-      allow create: if isOwner(request.resource.data.uid);
-      allow update, delete: if isOwner(resource.data.uid);
+      allow create: if informeValido(request.resource.data)
+        && isOwner(request.resource.data.uid);
+      allow update: if informeValido(request.resource.data)
+        && isOwner(resource.data.uid)
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(resource.data.uid);
     }
+
+    // Todo lo demás está denegado por defecto.
   }
 }

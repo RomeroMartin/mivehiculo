@@ -1,0 +1,56 @@
+/* Estilos mínimos y funcionales. El diseño de la interfaz se define aparte. */
+:root {
+  --fondo: #ffffff;
+  --texto: #1d2733;
+  --suave: #5b6775;
+  --borde: #cfd6de;
+  --acento: #1a5fb4;
+  --acento-texto: #ffffff;
+  --error: #b00020;
+  --ok: #1b6e3c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #14181d;
+    --texto: #e8ecf0;
+    --suave: #9aa6b2;
+    --borde: #36404a;
+    --acento: #6ea8fe;
+    --acento-texto: #0b1a2e;
+    --error: #ff8a9a;
+    --ok: #6fd69a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  background: var(--fondo);
+  color: var(--texto);
+}
+main { max-width: 26rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.15rem; margin: 1.25rem 0 .5rem; }
+.sub { color: var(--suave); margin: 0 0 1.25rem; }
+label { display: block; font-weight: 600; margin: .75rem 0 .25rem; }
+input[type="text"], input[type="email"], input[type="password"] {
+  width: 100%; padding: .65rem .75rem; font-size: 1rem;
+  border: 1px solid var(--borde); border-radius: .5rem;
+  background: var(--fondo); color: var(--texto);
+}
+button {
+  font: inherit; padding: .65rem 1rem; border-radius: .5rem; cursor: pointer;
+  border: 1px solid var(--borde); background: transparent; color: var(--texto);
+  min-height: 2.75rem;
+}
+button.principal { background: var(--acento); color: var(--acento-texto); border-color: var(--acento); font-weight: 600; }
+button:disabled { opacity: .6; cursor: default; }
+button.enlace { border: 0; padding: .25rem 0; min-height: 0; color: var(--acento); text-decoration: underline; }
+.fila { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+.fila > button { flex: 1 1 auto; }
+.ancho { width: 100%; margin-top: 1rem; }
+.separador { text-align: center; color: var(--suave); margin: 1.25rem 0 0; }
+.mensaje { color: var(--ok); margin: 1rem 0 0; }
+.error { color: var(--error); margin: 1rem 0 0; }
+[hidden] { display: none !important; }
