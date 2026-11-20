@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mi Vehículo (app de mantenimiento vehicular)
 
-Versión 2.1 · 18/11/2026 · Autor: Romero Martín
+Versión 2.2 · 18/11/2026 · Autor: Romero Martín
 (Reemplaza al borrador del 17/11/2026. Al final hay un registro de qué cambió y por qué.)
 
 ## Resumen
@@ -12,7 +12,7 @@ Decisiones tomadas:
 - **Backend:** Firebase en plan Spark (gratis, sin pausas). No se usa Supabase para evitar la pausa semanal del plan gratis.
 - **Hosting:** Firebase Hosting (mismo proyecto que la base y el login). Evita problemas del login con Google entre dominios distintos, sobre todo en Safari/iPhone. No se compra dominio por ahora: la app vive en la dirección gratuita que da Firebase (`https://<proyecto>.web.app`). Si más adelante se compra uno, se agrega en Hosting sin cambiar nada más. Cloudflare no se usa.
 - **Nombre de la app:** "Mi Vehículo".
-- **Deploy automático:** cada vez que se mergea algo a `main`, un workflow de GitHub Actions corre los tests y publica sitio, reglas e índices en Firebase. No hace falta instalar nada en tu computadora para publicar.
+- **Deploy manual:** se publica a mano con `firebase deploy` desde tu computadora, después de correr los tests. No hay publicación automática: evita crear y cuidar una cuenta de servicio de deploy y los problemas de permisos de Google Cloud. Si algún día se quiere automatizar, se retoma (ver "Deploy").
 - **Mails:** un script diario en GitHub Actions (repo privado) que lee Firestore y manda con Resend. Sin dominio propio verificado, Resend solo permite enviar al mail de la cuenta de Resend, o sea al tuyo. Para uso propio alcanza; mandar a otros usuarios queda para cuando se compre un dominio.
 - **Sin fotos ni documentos:** la app no guarda imágenes, cédulas, pólizas ni números de chasis o motor. Solo datos livianos de texto y números. Esto reduce costos, riesgos legales y complejidad.
 - **Avisos solo al mail de la cuenta**, que debe estar verificado. Mails adicionales quedan para la versión comercial.
@@ -334,7 +334,7 @@ Un script de Node corre todos los días a las 8:00 de Argentina en GitHub Action
 
 - `schedule: cron '0 11 * * *'` (11:00 UTC = 8:00 en Argentina, que no tiene horario de verano) + `workflow_dispatch` para correrlo a mano.
 - Node 20, `npm ci` en `job/`, y después `node job/alertas.js`.
-- Secrets: `FIREBASE_SERVICE_ACCOUNT` (el JSON completo, solo lectura de datos), `RESEND_API_KEY`, `MAIL_FROM`, `APP_URL`, `HEALTHCHECK_URL`. (El deploy usa otra cuenta de servicio distinta; ver "Deploy automático".)
+- Secrets: `FIREBASE_SERVICE_ACCOUNT` (el JSON completo, solo lectura de datos), `RESEND_API_KEY`, `MAIL_FROM`, `APP_URL`, `HEALTHCHECK_URL`.
 - GitHub puede demorar las tareas programadas en horas pico, e incluso saltearlas alguna vez. Para avisos diarios la demora no importa, pero la omisión hay que detectarla (ver Latido).
 - Si el job falla, GitHub le manda un mail al dueño del repo.
 
@@ -426,8 +426,7 @@ Un solo repo privado: el sitio estático en `public/` (sin paso de compilación)
 ├─ firestore.indexes.json
 ├─ firebase.json              hosting (public/, cabeceras CSP), emuladores, reglas e índices
 ├─ .github/workflows/
-│  ├─ alertas.yml             job diario de mails
-│  └─ deploy.yml              tests + publicación en Firebase al mergear a main
+│  └─ alertas.yml             job diario de mails
 ├─ .firebaserc                id del proyecto de Firebase
 ├─ .gitignore                 incluye cualquier *.json de cuenta de servicio
 ├─ CLAUDE.md                  corto: reglas y convenciones; apunta a docs/PLAN.md
@@ -437,42 +436,36 @@ Un solo repo privado: el sitio estático en `public/` (sin paso de compilación)
 
 - El job importa `../public/js/shared/calculos.js`. Por eso `shared/` no puede usar nada del navegador.
 - Las consultas `collectionGroup` con `where('activo', '==', true)` necesitan habilitar el índice de grupo de colecciones (`fieldOverrides` en `firestore.indexes.json`). Si no, el job falla con un error de índice.
-- La config de Firebase en `firebase.js` es pública por diseño. La protección son las reglas, App Check y restringir la API key a `<proyecto>.web.app` y `localhost` en Google Cloud.
+- La config de Firebase en `firebase.js` es pública por diseño. La protección son las reglas, App Check y restringir la API key a `<proyecto>.web.app` y `localhost` (opcional, ver Configuración externa).
 - `firebase.json` define cabeceras de seguridad para el hosting, incluida una política CSP (qué scripts y conexiones puede usar la página: solo la propia y los dominios de Firebase). Se ajusta en la fase 1 probando login, base y App Check.
-- El deploy es automático (ver la sección siguiente). También se puede publicar a mano con `firebase deploy` si hace falta.
+- El deploy es manual (ver la sección siguiente).
 
-## Deploy automático
+## Deploy
 
-Cada push a `main` publica la app sin intervención. Workflow: `.github/workflows/deploy.yml`.
+La publicación es **manual**, desde tu computadora, con `firebase-tools`. No hay workflow de deploy ni cuenta de servicio de deploy.
 
-**Qué hace, en orden**
+**Una sola vez**
 
-1. Se dispara con `push` a `main` (y con `workflow_dispatch` para correrlo a mano). No corre en ramas ni en pull requests: nada se publica sin pasar por `main`.
-2. Instala Node 20, `npm ci`, y corre `node --test tests/calculos.test.js`. Si los tests fallan, **no se publica**.
-3. Corre los tests de reglas en el emulador (necesita Java; en el runner de GitHub se instala con `actions/setup-java`). Si fallan, no se publica.
-4. Publica con `firebase-tools` en versión fijada: `firebase deploy --only hosting,firestore:rules,firestore:indexes --project <id>`.
-5. Usa `concurrency` para que no corran dos deploys a la vez.
+- Instalar Node 20 o más nuevo y, en la carpeta del repo, hacer `npx firebase-tools@15.36.0 login` (abre el navegador y entrás con tu cuenta de Google). No hace falta instalar nada de forma global.
+- Para los tests de reglas (fase 1 en adelante) hace falta Java instalado.
 
-**Credencial de deploy: una cuenta de servicio aparte**
+**Cada vez que querés publicar** (siempre desde `main`, actualizado con `git pull`)
 
-El job de alertas ya tiene una cuenta de servicio que lee todos los datos. **No se reutiliza para publicar.** Se crea otra, solo para deploy, con los permisos mínimos:
+1. Correr los tests: `node --test tests/` y, desde que existan, los de reglas con el emulador.
+2. Publicar según lo que cambió:
+   - Solo el sitio: `npx firebase-tools@15.36.0 deploy --only hosting --project mi-vehiculo-mantenimiento`
+   - Sitio, reglas e índices: `npx firebase-tools@15.36.0 deploy --only hosting,firestore:rules,firestore:indexes --project mi-vehiculo-mantenimiento`
+3. Abrir `https://mi-vehiculo-mantenimiento.web.app` y comprobar que carga y que el login anda. Si algo quedó roto, se vuelve a la versión anterior desde la consola de Firebase → Hosting → "Versiones anteriores".
 
-- Firebase Hosting Admin
-- Firebase Rules Admin
-- Cloud Datastore Index Admin (para publicar índices)
-- Service Usage Consumer
+**Reglas del juego**
 
-Su JSON va al secret `FIREBASE_DEPLOY_KEY`. Nunca al repo. Si se filtra, se revoca y se genera otra: no da acceso a los datos de los usuarios, solo a publicar.
+- Antes de publicar reglas, correr sus tests: una regla mal puesta deja la base abierta o inutilizable.
+- Se publica solo lo que está en `main`, para que lo que está online siempre coincida con lo del repo.
+- Con `.firebaserc` y `firebase.json` en el repo, no hace falta pasar `--project`, pero se deja explícito para no publicar en otro proyecto por error.
 
-**Protecciones recomendadas en GitHub**
+**Para más adelante (opcional)**
 
-- Proteger la rama `main` (Settings → Branches): exigir pull request antes de mergear. Así lo que se publica pasó por un PR visible.
-- Los secrets de deploy se cargan en un *environment* llamado `produccion` (Settings → Environments), así solo los ven los workflows que lo declaran.
-
-**Variantes que quedan para más adelante**
-
-- Publicar una versión de prueba por cada pull request (canales de vista previa de Firebase Hosting).
-- Un entorno de pruebas separado (segundo proyecto de Firebase).
+Si publicar a mano se vuelve molesto, se puede automatizar con GitHub Actions y una cuenta de servicio de deploy con permisos mínimos (Firebase Hosting Admin, Firebase Rules Admin y Cloud Datastore Index Admin), guardada solo como secret. Los pasos quedaron en el historial de este documento (versión 2.1).
 
 ## Configuración externa
 
@@ -487,8 +480,7 @@ Son cinco servicios y se configuran una sola vez, antes de la fase 1. Los pasos 
 - [ ] Hosting: activarlo y publicar una página de prueba. Verificar el login con Google en la URL `*.web.app` desde **Safari en iPhone** y Chrome en Android antes de seguir.
 - [ ] Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada. El JSON va solo al secret de GitHub, **nunca al repo**.
 - [ ] App Check: registrar la app web con reCAPTCHA y dejarlo **sin exigir** hasta la fase 8 (para no bloquearte durante el desarrollo; se usa token de depuración en local).
-- [ ] Primera publicación de reglas e índices (a mano, una vez): `firebase deploy --only firestore:rules,firestore:indexes`. De ahí en adelante lo hace el deploy automático.
-- [ ] Crear la cuenta de servicio de **deploy** (Google Cloud → IAM → Cuentas de servicio) con los roles listados en "Deploy automático" y generar su clave JSON.
+- [ ] Primera publicación de reglas e índices (a mano), cuando existan en la fase 1: ver "Deploy".
 
 **Resend**
 
@@ -505,14 +497,13 @@ Son cinco servicios y se configuran una sola vez, antes de la fase 1. Los pasos 
 **GitHub**
 
 - [ ] Repo **privado**.
-- [ ] Crear el environment `produccion` (Settings → Environments) y proteger la rama `main`.
+- [ ] Proteger la rama `main` (Settings → Branches): exigir pull request antes de mergear.
 - [ ] Secrets de alertas: `FIREBASE_SERVICE_ACCOUNT`, `RESEND_API_KEY`, `MAIL_FROM` (`Mi Vehículo <onboarding@resend.dev>`), `APP_URL` (la dirección `https://<proyecto>.web.app`), `HEALTHCHECK_URL`.
-- [ ] Secret de deploy (en el environment `produccion`): `FIREBASE_DEPLOY_KEY`, y variable `FIREBASE_PROJECT_ID`.
 
 **Dirección de la app (sin dominio propio)**
 
 - [ ] Usar la dirección gratuita `https://<proyecto>.web.app` (elegir bien el ID del proyecto al crearlo: ahí queda para siempre, por ejemplo `mi-vehiculo-app`). Firebase ya la tiene como dominio autorizado para el login.
-- [ ] En Google Cloud → Credenciales, restringir la API key de Firebase a esa dirección y a `localhost`.
+- [ ] *Opcional:* en Google Cloud → Credenciales, restringir la API key de Firebase a esa dirección y a `localhost`. Es una capa extra: la protección real son las reglas y App Check, así que si Google Cloud da problemas se puede postergar sin riesgo para los datos.
 
 ## Límites del plan gratis
 
@@ -536,10 +527,10 @@ Fuentes: [precios de Firebase](https://firebase.google.com/pricing), [precios de
 
 ## Fases de desarrollo
 
-Son nueve fases en orden, y cada una termina con algo que se puede probar. Con Claude Code conviene hacer una fase por sesión y un commit al cerrar cada una. El orden prioriza lo que da valor real (los avisos) y valida pronto lo más riesgoso (deploy, mails, GitHub Actions).
+Son nueve fases en orden, y cada una termina con algo que se puede probar. Con Claude Code conviene hacer una fase por sesión y un commit al cerrar cada una. El orden prioriza lo que da valor real (los avisos) y valida pronto lo más riesgoso (mails, GitHub Actions).
 
-0. **Fase 0 — Preparación.** Configuración externa completa, repo con la estructura vacía, deploy automático funcionando con una página de prueba, `firebase.js`, emuladores de Auth y Firestore andando.
-   - Listo cuando: una página de prueba escribe y lee un documento en el emulador, un push a `main` la publica sola en `https://<proyecto>.web.app`, y el login con Google funciona ahí desde Safari iPhone y Chrome Android.
+0. **Fase 0 — Preparación.** Configuración externa completa, repo con la estructura vacía, una página de prueba publicada a mano, `firebase.js`, emuladores de Auth y Firestore andando.
+   - Listo cuando: una página de prueba escribe y lee un documento en el emulador, `firebase deploy` la publica en `https://<proyecto>.web.app`, y el login con Google funciona ahí desde Safari iPhone y Chrome Android.
 1. **Fase 1 — Cuentas y seguridad.** Login con Google y email, verificación de mail, recuperar contraseña, guardia de páginas privadas, creación de `usuarios/{uid}` en el primer ingreso (con el mail ya verificado), reglas publicadas, cabeceras CSP, `ui.js`.
    - Listo cuando: un test en el emulador confirma que el usuario A no puede leer ni escribir nada del usuario B, que un usuario sin mail verificado no puede escribir, que no se puede guardar un `email` distinto al de la cuenta, y que un informe inactivo no se lee.
 2. **Fase 2 — Vehículos y kilometraje.** Alta, edición y archivo de vehículos. Lecturas de km con validación por fecha. `shared/fechas.js` y `shared/calculos.js` con `recalcularKmVehiculo` y `kmEstimado`. Borrado reanudable de vehículos.
@@ -554,7 +545,7 @@ Son nueve fases en orden, y cada una termina con algo que se puede probar. Con C
    - Listo cuando: con una lectura de hace 31 días llega el pedido. Desde el link se carga el km en menos de 3 toques. Al día siguiente no se repite.
 7. **Fase 7 — Informe para comprador.** Generar, actualizar solo, dejar de compartir, `informe.html` imprimible.
    - Listo cuando: el link abre en una ventana de incógnito, no muestra datos personales por defecto, un texto con código en un campo se ve como texto, y deja de abrir al cortarlo.
-8. **Fase 8 — Cierre.** Ajustes (preferencias de avisos), manifest para instalar en el celular, borrar la cuenta con todos sus datos (reanudable), activar App Check en modo exigido, README, revisión final del deploy automático.
+8. **Fase 8 — Cierre.** Ajustes (preferencias de avisos), manifest para instalar en el celular, borrar la cuenta con todos sus datos (reanudable), activar App Check en modo exigido, README, revisión final del procedimiento de deploy.
    - Listo cuando: usaste la app una semana con tus vehículos reales sin errores en la consola.
 
 ## Riesgos, decisiones abiertas y camino a producto
@@ -566,8 +557,8 @@ El riesgo más grande no es técnico: es que el usuario deje de cargar km y los 
 | No se cargan km | Los planes por km avisan tarde o temprano | Mail mensual, lectura automática en cada service, aviso de "poco confiable" |
 | Mails en spam | No llegan los avisos | Asunto claro y sin imágenes pesadas; con dominio propio, SPF, DKIM y DMARC. Mientras se use `onboarding@resend.dev`, revisar la carpeta de spam y marcar el remitente como seguro |
 | Sin dominio, solo llegan mails a tu cuenta | Otros usuarios no reciben avisos | El job trata el rechazo de Resend como "destinatario no permitido": lo registra, no marca nada y sigue con el resto sin fallar. Se resuelve comprando un dominio antes de vender |
-| Se filtra la clave de deploy | Alguien publica cambios en tu app | Cuenta de servicio aparte con permisos mínimos, secret solo en el environment `produccion`, `main` protegida |
-| Un deploy publica algo roto | App caída hasta el siguiente deploy | Los tests corren antes; se puede volver a una versión anterior desde la consola de Hosting |
+| Se publica algo roto | App caída hasta el siguiente deploy | Tests locales antes de publicar; volver a una versión anterior desde la consola de Hosting |
+| Publicar a mano algo que no está en `main` | Lo online no coincide con el repo | Regla: se publica solo desde `main` actualizado |
 | Se filtra la clave de servicio | Acceso total a la base | Solo en secrets de GitHub, nunca en el repo. Si se expone, revocarla en Firebase y generar otra |
 | Ubicación de Firestore mal elegida | No se puede cambiar | Elegir `southamerica-east1` en la fase 0 |
 | El job falla | No salen avisos | GitHub avisa por mail y queda el log en `avisos` |
@@ -582,7 +573,7 @@ El riesgo más grande no es técnico: es que el usuario deje de cargar km y los 
 
 - [x] Nombre de la app: **Mi Vehículo**.
 - [x] Dominio: por ahora ninguno, se usa `https://<proyecto>.web.app`.
-- [x] Deploy: automático con GitHub Actions al hacer merge a `main`.
+- [x] Deploy: manual con `firebase deploy` (se descartó la publicación automática por ahora).
 - [x] ID del proyecto de Firebase: `mi-vehiculo-mantenimiento` (dirección `https://mi-vehiculo-mantenimiento.web.app`).
 - [ ] Cuándo comprar un dominio (obligatorio antes de que otras personas reciban mails).
 
@@ -612,6 +603,6 @@ El riesgo más grande no es técnico: es que el usuario deje de cargar km y los 
 | App Check + topes en reglas | Evita que un usuario agote la cuota gratis |
 | Fases reordenadas (alertas antes, 9 en total) | Da valor real antes y valida pronto el dominio y el job |
 | Nombre "Mi Vehículo", sin dominio propio por ahora | Menos costo y menos pasos; los mails solo salen a tu cuenta hasta tener dominio |
-| Deploy automático con cuenta de servicio aparte | Publicar sin instalar nada y sin dar acceso a los datos de usuarios |
+| Deploy manual (se descarta la publicación automática) | Menos piezas y sin cuentas de servicio extra; se retoma si molesta |
 | Se quita `zonaHoraria`, se separan los avisos, se suma DMARC, caché offline, versiones fijadas, tests de reglas con librería y Java | Detalles técnicos menores |
 | Plan en `docs/PLAN.md` + `CLAUDE.md` corto | Menos contexto gastado en cada sesión de Claude Code |
